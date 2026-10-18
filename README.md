@@ -142,11 +142,9 @@ serve.py            本地服务器 + 数据读写接口
 start.bat           Windows 一键启动
 assets/plates/      48 张第六版图版
 assets/ishihara/    8 张公版国际版图版
-assets/demo/        演示图库（演示模式用）
 ```
 
-> `data/` 与 `temp/` 只存在于本地，已在 `.gitignore` 中整目录忽略：
-> 前者是运行数据，后者是整页截图原图和裁图脚本。
+> `data/` 是本地运行数据（布局、答案、行勾选），已在 `.gitignore` 中整目录忽略。
 
 ---
 

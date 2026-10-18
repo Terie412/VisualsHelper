@@ -11,9 +11,6 @@
 
 var VH_CONFIG = {
 
-  /* 演示模式：改成 true 会切到 assets/demo/ 的示意图 */
-  demo: false,
-
   /* 图的总张数 */
   plateCount: 48,
 
@@ -111,18 +108,6 @@ var VH_CONFIG = {
   'use strict';
 
   var C = global.VH_CONFIG || {};
-
-  var DEMO_ANSWERS = {
-    1: '8', 2: '26', 3: '45', 4: '6', 5: '15', 6: '29',
-    7: '73', 8: '4', 9: '92', 10: '61', 11: '37', 12: '50'
-  };
-
-  if (C.demo) {
-    C.dir = 'assets/demo/';
-    if (!C.answers || Object.keys(C.answers).length === 0) {
-      C.answers = DEMO_ANSWERS;
-    }
-  }
 
   var DIR = C.dir != null ? C.dir : 'assets/plates/';
   var PAD = C.namePad != null ? C.namePad : 3;
@@ -283,7 +268,6 @@ var VH_CONFIG = {
   global.VH.data = {
     plates: plates,
     total: plates.length,
-    isDemo: !!C.demo,
     answerOf: answerOf,
     normalize: normalize,
     kindOf: kindOf,

@@ -170,15 +170,6 @@
   function startUI() {
     VH.learn.mount();
 
-    if (VH.data.isDemo) {
-      var badge = $('demo-badge');
-      if (badge) {
-        badge.hidden = false;
-        badge.title = '当前使用 assets/demo/ 下的演示图，答案也是示例。' +
-          '换成自己的图后，请在 js/data.js 里把 demo 改成 false，并按说明配置图号和答案。';
-      }
-    }
-
     Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) {
       b.addEventListener('click', function () { switchView(b.dataset.view); });
     });

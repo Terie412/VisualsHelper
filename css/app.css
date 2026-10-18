@@ -174,17 +174,6 @@ main { flex: 1; min-height: 0; position: relative; }
   font-variant-numeric: tabular-nums;
 }
 
-.badge-demo {
-  font-size: 11px;
-  color: var(--warn);
-  background: rgba(245, 185, 66, .1);
-  border: 1px solid rgba(245, 185, 66, .28);
-  border-radius: 999px;
-  padding: 3px 10px;
-  letter-spacing: .3px;
-  cursor: help;
-}
-
 .toolbar-right { display: flex; align-items: center; gap: 8px; }
 
 .size-ctl {
@@ -814,58 +803,6 @@ body.hide-answers .lb-answer {
   color: var(--text-faint);
 }
 
-.run-input {
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #0b1017;
-  border: 1px solid var(--line-strong);
-  border-radius: 12px;
-  font-size: 34px;
-  font-weight: 600;
-  letter-spacing: 2px;
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-}
-
-.run-input .ph { color: #2b3442; font-weight: 400; }
-
-.run-input.is-filled { border-color: rgba(78, 167, 255, .55); box-shadow: 0 0 0 3px rgba(78, 167, 255, .1); }
-
-.keypad {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-.keypad button {
-  height: 50px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #121922;
-  color: var(--text);
-  font-size: 19px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background .12s, border-color .12s, transform .08s;
-  font-variant-numeric: tabular-nums;
-}
-
-.keypad button:hover { background: #1a2331; border-color: var(--line-strong); }
-.keypad button:active { transform: scale(.96); background: #202b3b; }
-
-.keypad button.fn { font-size: 13px; color: var(--text-dim); }
-.keypad button.ok {
-  background: rgba(78, 167, 255, .16);
-  border-color: rgba(78, 167, 255, .4);
-  color: #9dcdff;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.keypad button.ok:hover { background: rgba(78, 167, 255, .24); }
-
 /* 结果 */
 
 .exam-pane[data-pane="result"] { overflow: auto; }
@@ -1285,19 +1222,6 @@ body.hide-answers .lb-answer {
   word-break: break-word;
 }
 
-/* ---------------------------------------------------------- 选择题模式 */
-
-.keypad.is-choice {
-  grid-template-columns: 1fr 1fr;
-}
-
-.keypad button.choice-btn {
-  height: 46px;
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: .5px;
-}
-
 /* ---------------------------------------------------------- 参考图库 */
 
 .ref-note {
@@ -1388,13 +1312,4 @@ body.hide-answers .lb-answer {
   font-weight: 400;
   font-style: italic;
   font-size: 12px;
-}
-
-/* ---------------------------------------------------------- 动效 */
-
-.tidy-flash { animation: flash .5s ease; }
-
-@keyframes flash {
-  0% { opacity: .35; }
-  100% { opacity: 1; }
 }
