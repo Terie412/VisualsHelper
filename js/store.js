@@ -122,6 +122,7 @@
     if (!state) state = {};
     if (!state.rowNotes) state.rowNotes = {};
     if (!state.answers) state.answers = {};
+    if (!state.rowSkip) state.rowSkip = {};
     return state;
   }
 
@@ -193,6 +194,17 @@
 
     saveRowNotes: function (m) {
       ensure().rowNotes = m || {};
+      persist();
+    },
+
+    /* --- 整行不参与考试（行索引 -> true） --- */
+    loadRowSkip: function () {
+      var m = ensure().rowSkip;
+      return (m && typeof m === 'object' && !Array.isArray(m)) ? m : {};
+    },
+
+    saveRowSkip: function (m) {
+      ensure().rowSkip = m || {};
       persist();
     },
 

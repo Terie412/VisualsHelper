@@ -307,6 +307,26 @@ main { flex: 1; min-height: 0; position: relative; }
   opacity: .45;
 }
 
+/* 所在行勾了「不考」：压暗 + 右上角标一下，仍然可以看和拖 */
+.plate-card.is-skipped:not(.is-dragging) { opacity: .45; }
+.plate-card.is-skipped:hover:not(.is-dragging) { opacity: 1; }
+
+.plate-card.is-skipped::after {
+  content: "不考";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 107, 107, .92);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  pointer-events: none;
+}
+
 /* 答案开关 */
 
 .switch {
@@ -376,6 +396,9 @@ body.hide-answers .lb-answer {
 
 .row-note {
   position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding: 10px 8px;
   background: rgba(255, 255, 255, .022);
   border: 1px dashed rgba(255, 255, 255, .11);
@@ -401,12 +424,46 @@ body.hide-answers .lb-answer {
   border-style: solid;
 }
 
+/* 整行不参与考试 */
+.row-note.is-skip {
+  background: rgba(255, 107, 107, .06);
+  border-color: rgba(255, 107, 107, .3);
+  border-style: solid;
+}
+
 .row-note[hidden] { display: none; }
+
+.row-skip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: .3px;
+  color: var(--text-faint);
+  cursor: pointer;
+  user-select: none;
+}
+
+.row-skip input {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: var(--bad);
+  cursor: pointer;
+  flex: none;
+}
+
+.row-skip:hover { color: var(--text-dim); }
+
+.row-note.is-skip .row-skip { color: var(--bad); }
 
 .row-note textarea {
   display: block;
   width: 100%;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   border: 0;
   outline: none;
   resize: none;

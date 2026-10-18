@@ -23,6 +23,7 @@
   var posMap = {};     // id -> {r, c}
   var cellMap = {};    // "r,c" -> id
   var rowNotes = {};   // 行索引 -> 备注文字
+  var rowSkip = {};    // 行索引 -> true 表示这一行不参与考试
   var noteEls = [];    // 行索引 -> 备注框元素
   var size = 180;
   var cols = 6;          // 初始列数，只用于默认排布和补位
@@ -157,6 +158,7 @@
 
     updateCanvasSize();
     syncRowNotes();
+    applyRowSkip();
   }
 
   function updateCanvasSize() {
@@ -177,6 +179,38 @@
 
   /* ---------------------------------------------------------- 行备注 */
 
+  function isPlateSkipped(p) {
+    var pos = posMap[p.id];
+    return !!(pos && rowSkip[pos.r]);
+  }
+
+  /* 行勾了「不考」就等于这一行的图都不参与考试，跟卡片当下在第几行走 */
+  function examPool() {
+    return VH.data.examinable().filter(function (p) { return !isPlateSkipped(p); });
+  }
+
+  function applyRowSkip() {
+    plates.forEach(function (p) {
+      var el = cardMap[p.id];
+      if (!el) return;
+      el.classList.toggle('is-skipped', isPlateSkipped(p));
+    });
+  }
+
+  function setRowSkip(r, on) {
+    if (on) rowSkip[r] = true;
+    else delete rowSkip[r];
+
+    VH.store.saveRowSkip(rowSkip);
+
+    var ref = noteEls[r];
+    if (ref) ref.box.classList.toggle('is-skip', !!on);
+
+    applyRowSkip();
+    updateStat();
+    document.dispatchEvent(new CustomEvent('vh:pool-changed'));
+  }
+
   function createNote(r) {
     var box = document.createElement('div');
     box.className = 'row-note';
@@ -184,6 +218,26 @@
     box.style.width = NOTE_W + 'px';
     box.style.top = (PAD + r * cellH()) + 'px';
     box.style.height = cardHeight() + 'px';
+    if (rowSkip[r]) box.classList.add('is-skip');
+
+    var skip = document.createElement('label');
+    skip.className = 'row-skip';
+    skip.title = '勾选后这一行的图都不参与考试（仍然可以在学习页看）';
+
+    var cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = !!rowSkip[r];
+
+    var skipText = document.createElement('span');
+    skipText.textContent = '不考';
+
+    skip.appendChild(cb);
+    skip.appendChild(skipText);
+
+    cb.addEventListener('change', function () {
+      setRowSkip(r, cb.checked);
+    });
+    cb.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
 
     var ta = document.createElement('textarea');
     ta.placeholder = '行备注';
@@ -203,9 +257,10 @@
     ta.addEventListener('keydown', function (e) { e.stopPropagation(); });
     ta.addEventListener('wheel', function (e) { e.stopPropagation(); });
 
+    box.appendChild(skip);
     box.appendChild(ta);
     canvas.appendChild(box);
-    return { box: box, ta: ta };
+    return { box: box, ta: ta, cb: cb };
   }
 
   function syncRowNotes() {
@@ -585,6 +640,7 @@
     cardMap = {};
     noteEls = [];
     rowNotes = VH.store.loadRowNotes();
+    rowSkip = VH.store.loadRowSkip();
 
     ghost = document.createElement('div');
     ghost.className = 'cell-ghost';
@@ -609,10 +665,12 @@
 
   function updateStat() {
     var total = plates.length;
-    var ready = VH.data.examinable().length;
+    var ready = examPool().length;
+    var skipped = VH.data.examinable().length - ready;
     var el = document.getElementById('learn-stat');
     if (!el) return;
-    el.textContent = total + ' 张图 · 可考 ' + ready + ' 张';
+    el.textContent = total + ' 张图 · 可考 ' + ready + ' 张' +
+      (skipped > 0 ? ' · ' + skipped + ' 张不考' : '');
     el.style.color = ready === 0 ? 'var(--warn)' : '';
   }
 
@@ -677,6 +735,11 @@
       if (VH.exam) VH.exam.refreshIdle();
     });
 
+    // 勾选「不考」后考试待机页的数字也要跟着变
+    document.addEventListener('vh:pool-changed', function () {
+      if (VH.exam) VH.exam.refreshIdle();
+    });
+
     var resizeTimer = 0;
     window.addEventListener('resize', function () {
       clearTimeout(resizeTimer);
@@ -703,6 +766,7 @@
     onShow: onShow,
     refresh: refresh,
     updateStat: updateStat,
+    examPool: examPool,
     openLightbox: openLightbox,
     sortByNumber: sortByNumber
   };

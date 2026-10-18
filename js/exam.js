@@ -50,6 +50,12 @@
     });
   }
 
+  /* 可考的题：有答案，且所在行没有勾「不考」 */
+  function examPool() {
+    if (VH.learn && VH.learn.examPool) return VH.learn.examPool();
+    return VH.data.examinable();
+  }
+
   /* ---------------------------------------------------------- 待机 */
 
   function refreshIdle() {
@@ -57,8 +63,11 @@
 
     settings = VH.store.settings();
 
-    var pool = VH.data.examinable();
+    var all = VH.data.examinable();
+    var pool = examPool();
+    var skipped = all.length - pool.length;
     var total = VH.data.total;
+    var off = total - pool.length;
     var n = Math.min(settings.count, pool.length || 0);
 
     dom.count.textContent = n;
@@ -67,12 +76,18 @@
 
     if (pool.length === 0) {
       dom.warn.hidden = false;
-      dom.warn.textContent = '题库里还没有任何答案，无法开始考试。请在学习页填写答案，或编辑 js/data.js。';
+      dom.warn.textContent = all.length
+        ? '有答案的图都在勾了「不考」的行里了，把行左侧的勾去掉再来考试。'
+        : '题库里还没有任何答案，无法开始考试。请在学习页填写答案，或编辑 js/data.js。';
       dom.startBtn.disabled = true;
-    } else if (total - pool.length > 0) {
+    } else if (off > 0) {
+      var parts = [];
+      if (total - all.length > 0) parts.push((total - all.length) + ' 张还没有答案');
+      if (skipped > 0) parts.push(skipped + ' 张所在行勾了「不考」');
+
       dom.warn.hidden = false;
-      dom.warn.textContent = '题库共 ' + total + ' 张，其中 ' + (total - pool.length) +
-        ' 张还没有答案，不参与本次考试。';
+      dom.warn.textContent = '题库共 ' + total + ' 张，其中 ' + parts.join('、') +
+        '，不参与本次考试。';
       dom.startBtn.disabled = false;
     } else {
       dom.warn.hidden = true;
@@ -85,7 +100,7 @@
   function start() {
     settings = VH.store.settings();
 
-    var pool = VH.data.examinable();
+    var pool = examPool();
     if (!pool.length) return;
 
     var n = Math.min(settings.count, pool.length);
