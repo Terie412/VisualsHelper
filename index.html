@@ -83,7 +83,8 @@
           </div>
           <p class="idle-tip">
             看清图后，在右边点选你看到的答案，点一下就进入下一张（键盘 <kbd>1</kbd>–<kbd>4</kbd> 也行）。<br>
-            时间到会自动跳过并按未作答计。过程中不提示对错。
+            时间到会自动跳过并按未作答计。过程中不提示对错。<br>
+            中途想退出，点左下角「放弃本次考试」，成绩作废。
           </p>
           <p class="idle-warn" id="idle-warn" hidden></p>
           <button class="btn primary xl" id="btn-exam-start">开始考试</button>
@@ -110,6 +111,7 @@
             <button class="btn ghost block" id="btn-cant">看不清 / 跳过</button>
           </div>
         </div>
+        <button class="run-quit" id="btn-quit" type="button">放弃本次考试</button>
       </div>
 
       <!-- 结果 -->
@@ -168,6 +170,19 @@
       </div>
     </div>
     <button class="lb-close" data-close aria-label="关闭">×</button>
+  </div>
+</div>
+
+<!-- 放弃考试确认 -->
+<div class="modal" id="quit-modal" hidden>
+  <div class="modal-backdrop" data-quit-close></div>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="quit-title">
+    <h3 id="quit-title">放弃本次考试？</h3>
+    <p class="modal-text" id="quit-desc">放弃后本次成绩不再保留。</p>
+    <div class="modal-actions">
+      <button class="btn" id="btn-quit-cancel" type="button">继续考试</button>
+      <button class="btn danger" id="btn-quit-ok" type="button">放弃本次考试</button>
+    </div>
   </div>
 </div>
 

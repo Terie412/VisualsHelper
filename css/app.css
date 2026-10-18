@@ -895,6 +895,99 @@ body.hide-answers .lb-answer {
   padding: 6px 0 30px;
 }
 
+/* ---------------------------------------------------------- 放弃考试 */
+
+.run-quit {
+  position: absolute;
+  left: 48px;
+  bottom: 18px;
+  padding: 7px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-faint);
+  font-family: inherit;
+  font-size: 12.5px;
+  letter-spacing: .3px;
+  cursor: pointer;
+  transition: color .16s, border-color .16s, background .16s;
+}
+
+.run-quit:hover {
+  color: var(--bad);
+  border-color: rgba(255, 107, 107, .32);
+  background: rgba(255, 107, 107, .07);
+}
+
+.run-quit:focus-visible {
+  outline: 2px solid rgba(255, 107, 107, .5);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------- 确认弹层 */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.modal[hidden] { display: none; }
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 6, 9, .8);
+  backdrop-filter: blur(4px);
+}
+
+.modal-box {
+  position: relative;
+  width: min(430px, 100%);
+  padding: 26px 28px 22px;
+  background: linear-gradient(180deg, #10161f, #0b1017);
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .72);
+}
+
+.modal-box h3 {
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: .3px;
+  color: var(--text);
+}
+
+.modal-text {
+  margin: 0 0 22px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-faint);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal-actions .btn { padding: 9px 18px; }
+
+.btn.danger {
+  color: var(--bad);
+  border-color: rgba(255, 107, 107, .38);
+  background: rgba(255, 107, 107, .08);
+}
+
+.btn.danger:hover {
+  background: rgba(255, 107, 107, .16);
+  border-color: var(--bad);
+}
+
 /* ---------------------------------------------------------- 灯箱 */
 
 .lightbox {

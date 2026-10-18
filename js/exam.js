@@ -13,6 +13,7 @@
   var st = {
     built: false,
     running: false,
+    quitOpen: false,
     lastPane: 'idle',
     queue: [],
     idx: 0,
@@ -352,10 +353,50 @@
 
   function backToIdle() {
     st.running = false;
+    st.quitOpen = false;
     st.lastPane = 'idle';
     stopTimer();
+    hideQuitModal();
     showPane('idle');
     refreshIdle();
+  }
+
+  /* ---------------------------------------------------------- 放弃考试 */
+
+  function showQuitModal() {
+    if (!st.running || st.quitOpen) return;
+
+    st.quitOpen = true;
+
+    // 确认框开着的时候不能继续倒计时，否则想一下就被判超时
+    pauseTimer();
+
+    var answered = st.records.length;
+    dom.quitDesc.textContent = answered
+      ? '已经答了 ' + answered + ' 张。放弃后这些答案直接作废，本次不生成成绩，也不会写入错题。'
+      : '还没有作答。放弃后会回到准备页，随时可以重新开始。';
+
+    dom.quitModal.hidden = false;
+    dom.quitCancel.focus();
+  }
+
+  function hideQuitModal() {
+    st.quitOpen = false;
+    dom.quitModal.hidden = true;
+  }
+
+  /* keep：关掉之后要不要接着计时 */
+  function closeQuitModal(keep) {
+    if (!st.quitOpen) return;
+    hideQuitModal();
+    if (keep && st.running) resumeTimer();
+  }
+
+  function abandon() {
+    hideQuitModal();
+    st.records = [];
+    st.value = '';
+    backToIdle();
   }
 
   /* ---------------------------------------------------------- 事件 */
@@ -380,7 +421,26 @@
       if (global.VH.app) global.VH.app.switchView('learn');
     });
 
+    dom.quit.addEventListener('click', showQuitModal);
+    dom.quitOk.addEventListener('click', abandon);
+    dom.quitCancel.addEventListener('click', function () { closeQuitModal(true); });
+
+    dom.quitModal.addEventListener('click', function (e) {
+      if (e.target.hasAttribute && e.target.hasAttribute('data-quit-close')) {
+        closeQuitModal(true);
+      }
+    });
+
     document.addEventListener('keydown', function (e) {
+      // 确认框优先：Esc 只关弹层，不退出考试
+      if (st.quitOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          closeQuitModal(true);
+        }
+        return;
+      }
+
       if (!st.running) return;
       if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
 
@@ -397,6 +457,7 @@
     });
 
     document.addEventListener('visibilitychange', function () {
+      if (st.quitOpen) return;
       if (document.hidden) pauseTimer();
       else resumeTimer();
     });
@@ -428,7 +489,12 @@
       scoreSub: $('score-sub'),
       wrongList: $('wrong-list'),
       retry: $('btn-retry'),
-      back: $('btn-back-learn')
+      back: $('btn-back-learn'),
+      quit: $('btn-quit'),
+      quitModal: $('quit-modal'),
+      quitDesc: $('quit-desc'),
+      quitOk: $('btn-quit-ok'),
+      quitCancel: $('btn-quit-cancel')
     };
 
     bind();
