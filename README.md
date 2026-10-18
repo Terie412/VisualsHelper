@@ -138,8 +138,10 @@ start.bat           Windows 一键启动
 assets/plates/      48 张第六版图版
 assets/ishihara/    8 张公版国际版图版
 assets/demo/        演示图库（演示模式用）
-temp/cut.py         从整页截图裁图版的脚本
 ```
+
+> `data/` 与 `temp/` 只存在于本地，已在 `.gitignore` 中整目录忽略：
+> 前者是运行数据，后者是整页截图原图和裁图脚本。
 
 ---
 
