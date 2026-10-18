@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>色觉自测 · 学习与模拟考试</title>
+<link rel="icon" type="image/svg+xml" href="assets/icon.svg">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">
+      <img src="assets/icon.svg" alt="">
+    </span>
+    <div class="brand-text">
+      <strong>色觉自测</strong>
+      <span>学习 · 模拟考试</span>
+    </div>
+  </div>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab is-active" data-view="learn">学习</button>
+    <button class="tab" data-view="exam">考试</button>
+    <button class="tab" data-view="ref">参考</button>
+  </nav>
+
+  <button class="icon-btn" id="btn-settings" title="设置" aria-label="设置">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+      <path d="M4 7h9M19 7h1M4 17h5M15 17h5"/>
+      <circle cx="15.5" cy="7" r="2.2"/>
+      <circle cx="11.5" cy="17" r="2.2"/>
+    </svg>
+  </button>
+</header>
+
+<main>
+  <!-- ====================== 学习 ====================== -->
+  <section id="view-learn" class="view is-active">
+    <div class="learn-toolbar">
+      <div class="toolbar-left">
+        <span class="hint">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M12 3v18M3 12h18M8 7l4-4 4 4M8 17l4 4 4-4M7 8l-4 4 4 4M17 8l4 4-4 4"/>
+          </svg>
+          拖到格子上松手即可，目标位置有图会自动交换
+        </span>
+        <span class="stat" id="learn-stat"></span>
+        <span class="badge-demo" id="demo-badge" hidden>演示图库</span>
+      </div>
+      <div class="toolbar-right">
+        <label class="size-ctl">
+          <span>卡片</span>
+          <input type="range" id="card-size" min="120" max="320" step="10" value="180">
+        </label>
+        <label class="switch" title="关掉后卡片下方不显示答案">
+          <input type="checkbox" id="toggle-answers" checked>
+          <span class="track"><span class="knob"></span></span>
+          <span class="lbl">答案</span>
+        </label>
+        <button class="btn ghost" id="btn-tidy">按图号排序</button>
+      </div>
+    </div>
+    <div class="canvas-wrap" id="canvas-wrap">
+      <div class="canvas" id="canvas"></div>
+    </div>
+  </section>
+
+  <!-- ====================== 考试 ====================== -->
+  <section id="view-exam" class="view">
+    <div class="exam" id="exam">
+
+      <!-- 待机 -->
+      <div class="exam-pane is-active" data-pane="idle">
+        <div class="idle-card">
+          <div class="kicker">模拟考试</div>
+          <h2>本次 <b id="idle-count">12</b> 题</h2>
+          <div class="specs">
+            <div><span>单图限时</span><strong id="idle-limit">15 秒</strong></div>
+            <div><span>允许答错</span><strong id="idle-allow">1 张</strong></div>
+            <div><span>作答方式</span><strong>四选一</strong></div>
+          </div>
+          <p class="idle-tip">
+            看清图后，在右边点选你看到的答案，点一下就进入下一张（键盘 <kbd>1</kbd>–<kbd>4</kbd> 也行）。<br>
+            时间到会自动跳过并按未作答计。过程中不提示对错。
+          </p>
+          <p class="idle-warn" id="idle-warn" hidden></p>
+          <button class="btn primary xl" id="btn-exam-start">开始考试</button>
+        </div>
+      </div>
+
+      <!-- 答题 -->
+      <div class="exam-pane" data-pane="running">
+        <div class="run-top">
+          <div class="run-progress"><i id="run-bar"></i></div>
+          <div class="run-meta">
+            <span id="run-idx">1 / 12</span>
+            <span class="run-time" id="run-time">6.0</span>
+          </div>
+        </div>
+        <div class="run-stage">
+          <div class="run-plate">
+            <img id="run-img" alt="色觉检查图">
+            <div class="run-missing" id="run-missing" hidden>图片缺失</div>
+          </div>
+          <div class="run-side">
+            <div class="run-side-title">选出你看到的</div>
+            <div class="choices" id="choices"></div>
+            <button class="btn ghost block" id="btn-cant">看不清 / 跳过</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 结果 -->
+      <div class="exam-pane" data-pane="result">
+        <div class="result-wrap">
+          <div class="verdict" id="verdict">通过</div>
+          <div class="score-line">
+            <span id="score-main">12 / 12</span>
+            <span class="score-sub" id="score-sub"></span>
+          </div>
+          <div class="wrong-list" id="wrong-list"></div>
+          <div class="result-actions">
+            <button class="btn primary" id="btn-retry">再考一次</button>
+            <button class="btn ghost" id="btn-back-learn">回到学习</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+  <!-- ====================== 参考图库 ====================== -->
+  <section id="view-ref" class="view">
+    <div class="ref-note">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 11v6M12 7.6v.2"/>
+      </svg>
+      <p>
+        <strong>国际版 Ishihara 图版</strong>，Wellcome Collection 公版扫描件（1917–1959）。
+        和国内驾检用的第六版<strong>不是同一套</strong>，只用来练辨色，不参与考试。
+      </p>
+    </div>
+    <div class="ref-grid" id="ref-grid"></div>
+  </section>
+</main>
+
+<!-- 灯箱 -->
+<div class="lightbox" id="lightbox" hidden>
+  <div class="lb-backdrop" data-close></div>
+  <div class="lb-body">
+    <div class="lb-media">
+      <img id="lb-img" alt="">
+      <canvas id="lb-canvas" hidden></canvas>
+    </div>
+    <div class="lb-info">
+      <div class="lb-no" id="lb-no"></div>
+      <div class="lb-answer" id="lb-answer"></div>
+      <div class="lb-note" id="lb-note"></div>
+      <div class="lb-sim">
+        <div class="lb-sim-head">
+          <span>红绿补偿</span>
+          <output id="lb-sim-val">0%</output>
+        </div>
+        <input type="range" id="lb-sim" min="0" max="100" step="1" value="0">
+        <p class="lb-sim-tip" id="lb-sim-tip" hidden>本地文件方式打开时读不到像素，换成下面「打开方式」里的本地服务器就能用</p>
+      </div>
+    </div>
+    <button class="lb-close" data-close aria-label="关闭">×</button>
+  </div>
+</div>
+
+<!-- 设置 -->
+<div class="drawer" id="drawer" hidden>
+  <div class="drawer-backdrop" data-close></div>
+  <aside class="drawer-panel">
+    <header class="drawer-head">
+      <h3>设置</h3>
+      <button class="icon-btn" data-close aria-label="关闭">×</button>
+    </header>
+    <div class="drawer-body">
+      <div class="field">
+        <label for="set-count">每次抽题数量</label>
+        <div class="field-row">
+          <input type="range" id="set-count" min="4" max="60" step="1">
+          <output id="set-count-out">12</output>
+        </div>
+        <p class="field-tip">从有答案的图里随机抽取，打乱顺序。</p>
+      </div>
+      <div class="field">
+        <label for="set-limit">单图限时</label>
+        <div class="field-row">
+          <input type="range" id="set-limit" min="3" max="30" step="1">
+          <output id="set-limit-out">15 秒</output>
+        </div>
+        <p class="field-tip">时间到自动进入下一张，按未作答计。</p>
+      </div>
+      <div class="field">
+        <label for="set-allow">允许答错</label>
+        <div class="field-row">
+          <input type="range" id="set-allow" min="0" max="10" step="1">
+          <output id="set-allow-out">1 张</output>
+        </div>
+      </div>
+      <div class="field">
+        <label>数据</label>
+        <button class="btn ghost block" id="btn-export">备份到文件</button>
+        <p class="field-hint">布局和答案存在 <code>data/layout.json</code>，换浏览器也不会丢。这个按钮只是额外下载一份备份。</p>
+      </div>
+      <div class="field">
+        <button class="btn ghost block" id="btn-clear-layout">重置学习页排列</button>
+      </div>
+      <p class="drawer-foot">设置与布局保存在本机浏览器中。</p>
+    </div>
+  </aside>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ishihara.js"></script>
+<script src="js/compensate.js"></script>
+<script src="js/learn.js"></script>
+<script src="js/exam.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
