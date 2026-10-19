@@ -8,7 +8,7 @@
   var VH = global.VH;
 
   var dom = {};
-  var settings = { count: 12, limit: 15, allow: 1 };
+  var settings = { count: 12, limit: 15, allow: 1, sim: true };
 
   var st = {
     built: false,
@@ -117,9 +117,17 @@
 
   /* ---------------------------------------------------------- 候选 */
 
-  /* 正确答案 + 同类型的 3 个干扰项，避免「21 / 牛 / 茶壶」这种一眼能排除的组合 */
+  /* 正确答案 + 3 个干扰项 */
   function buildChoices(p) {
     var answer = VH.data.answerOf(p);
+
+    // 按相似度出题：干扰项来自和这张图最像的若干张
+    if (settings.sim && VH.sim && VH.sim.isReady()) {
+      var picked = VH.sim.pickOptions(p, answer, 4);
+      if (picked) return shuffle(picked);
+    }
+
+    // 回退：全库随机，同类型、同位数优先
     var pools = VH.data.answerPools();
     var isNumber = /^[0-9]+$/.test(VH.data.normalize(answer));
     var src = isNumber ? pools.numbers : pools.figures;

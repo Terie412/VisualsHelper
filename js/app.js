@@ -83,6 +83,7 @@
     settingInputs.count.value = s.count;
     settingInputs.limit.value = s.limit;
     settingInputs.allow.value = s.allow;
+    settingInputs.sim.checked = s.sim;
     paintOutputs();
   }
 
@@ -96,7 +97,8 @@
     return {
       count: Number(settingInputs.count.value),
       limit: Number(settingInputs.limit.value),
-      allow: Number(settingInputs.allow.value)
+      allow: Number(settingInputs.allow.value),
+      sim: settingInputs.sim.checked
     };
   }
 
@@ -125,7 +127,8 @@
     settingInputs = {
       count: $('set-count'),
       limit: $('set-limit'),
-      allow: $('set-allow')
+      allow: $('set-allow'),
+      sim: $('set-sim')
     };
 
     Object.keys(settingInputs).forEach(function (k) {
@@ -164,7 +167,9 @@
   /* ---------------------------------------------------------- 启动 */
 
   function init() {
-    VH.store.boot().then(startUI);
+    var boot = VH.store.boot();
+    var sim = VH.sim ? VH.sim.load() : Promise.resolve();
+    Promise.all([boot, sim]).then(startUI);
   }
 
   function startUI() {

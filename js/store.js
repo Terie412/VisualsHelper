@@ -22,7 +22,7 @@
     settings: 'vh.settings.v1'
   };
 
-  var DEFAULTS = { count: 12, limit: 15, allow: 1 };
+  var DEFAULTS = { count: 12, limit: 15, allow: 1, sim: true };
 
   var state = null;
   var mode = 'local';       // 'file' | 'local'
@@ -235,7 +235,8 @@
       return {
         count: clampInt(s.count, 4, 60, DEFAULTS.count),
         limit: clampInt(s.limit, 3, 30, DEFAULTS.limit),
-        allow: clampInt(s.allow, 0, 10, DEFAULTS.allow)
+        allow: clampInt(s.allow, 0, 10, DEFAULTS.allow),
+        sim: s.sim !== false
       };
     },
 
@@ -243,7 +244,8 @@
       ensure().settings = {
         count: clampInt(s.count, 4, 60, DEFAULTS.count),
         limit: clampInt(s.limit, 3, 30, DEFAULTS.limit),
-        allow: clampInt(s.allow, 0, 10, DEFAULTS.allow)
+        allow: clampInt(s.allow, 0, 10, DEFAULTS.allow),
+        sim: s.sim !== false
       };
       persist();
     },

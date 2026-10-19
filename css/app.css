@@ -1137,6 +1137,12 @@ body.hide-answers .lb-answer {
   margin-bottom: 12px;
 }
 
+/* 设置里的开关本身也是 label，别被上面的块级样式压掉 */
+.field > label.switch {
+  display: inline-flex;
+  margin-bottom: 0;
+}
+
 .field-row { display: flex; align-items: center; gap: 14px; }
 
 .field-row input[type="range"] {

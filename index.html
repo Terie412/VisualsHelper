@@ -203,6 +203,16 @@
         <p class="field-tip">从有答案的图里随机抽取，打乱顺序。</p>
       </div>
       <div class="field">
+        <label>出题方式</label>
+        <label class="switch">
+          <input type="checkbox" id="set-sim" checked>
+          <span class="track"><span class="knob"></span></span>
+          <span class="lbl">按相似度出题</span>
+        </label>
+        <p class="field-hint">开启时，干扰项从和当前图最相似的 10 张里挑；关掉则全库随机。</p>
+      </div>
+
+      <div class="field">
         <label for="set-limit">单图限时</label>
         <div class="field-row">
           <input type="range" id="set-limit" min="3" max="30" step="1">
@@ -235,6 +245,7 @@
 <script src="js/ishihara.js"></script>
 <script src="js/compensate.js"></script>
 <script src="js/learn.js"></script>
+<script src="js/similarity.js"></script>
 <script src="js/exam.js"></script>
 <script src="js/app.js"></script>
 </body>
