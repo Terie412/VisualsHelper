@@ -137,6 +137,25 @@
     }
   }
 
+  /* 图版清单：只留必要字段，脏数据直接丢掉 */
+  function cleanPlateList(list) {
+    return (Array.isArray(list) ? list : []).map(function (it) {
+      if (!it || it.idx == null || !it.stem) return null;
+      return {
+        idx: Number(it.idx),
+        stem: String(it.stem),
+        ext: it.ext ? String(it.ext) : 'jpg',
+        name: it.name ? String(it.name) : ''
+      };
+    }).filter(function (it) {
+      return it && isFinite(it.idx) && it.idx > 0;
+    });
+  }
+
+  function platesList() {
+    return cleanPlateList(ensure().plates);
+  }
+
   function ensure() {
     if (!state) state = {};
     if (!state.rowNotes) state.rowNotes = {};
@@ -303,22 +322,39 @@
       return Object.keys(ensure().answers || {}).length;
     },
 
-    /* --- 自备图版（导入的图片放 temp/plates/，不入库） --- */
+    /* --- 导入的图版清单 ---
+       图片本身在 temp/plates/（映射目录，不入库），
+       这里只记「导入了哪几张、各自是什么扩展名」，页面按清单取图。 */
+    platesList: platesList,
+
+    savePlatesList: function (list) {
+      var s = ensure();
+      var clean = cleanPlateList(list);
+
+      if (clean.length) s.plates = clean;
+      else delete s.plates;
+
+      persist();
+    },
+
+    platesSourceDir: function () {
+      var d = ensure().platesSource;
+      return typeof d === 'string' ? d : '';
+    },
+
+    savePlatesSourceDir: function (dir) {
+      var s = ensure();
+      if (dir) s.platesSource = String(dir);
+      else delete s.platesSource;
+      persist();
+    },
+
     customPlates: function () {
-      return !!ensure().customPlates;
+      return platesList().length > 0;
     },
 
     platesCount: function () {
-      var n = Number(ensure().platesCount);
-      return (isFinite(n) && n > 0) ? Math.round(n) : 0;
-    },
-
-    savePlatesMeta: function (custom, count) {
-      var s = ensure();
-      s.customPlates = !!custom;
-      if (custom && count > 0) s.platesCount = Math.round(count);
-      else delete s.platesCount;
-      persist();
+      return platesList().length;
     },
 
     /* 立刻提交待写的数据，返回 Promise */

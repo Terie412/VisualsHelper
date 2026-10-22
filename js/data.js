@@ -11,20 +11,14 @@
 
 var VH_CONFIG = {
 
-  /* 图的总张数 */
+  /* 图的总张数：没导入图版时，就按这个数摆占位格子 */
   plateCount: 48,
-
-  /* 图号不连续时才需要，这里连续，留 null */
-  numbers: null,
 
   /* 文件名数字补零位数 */
   namePad: 3,
 
-  /* 图片目录（导入的图放这里） */
-  dir: 'temp/plates/',
-
-  /* 尝试的扩展名顺序 */
-  extensions: ['jpg', 'jpeg', 'png', 'webp'],
+  /* 导入的图片被复制到这个映射目录（相对项目根），实际读哪张由导入清单决定 */
+  plateDir: 'temp/plates/',
 
   /* ======= 答案 ======= */
   answers: {
@@ -109,12 +103,9 @@ var VH_CONFIG = {
 
   var C = global.VH_CONFIG || {};
 
-  var DIR = C.dir != null ? C.dir : 'temp/plates/';
+  var PLATE_DIR = C.plateDir != null ? C.plateDir : 'temp/plates/';
   var PAD = C.namePad != null ? C.namePad : 3;
-  var EXTS = C.extensions || ['jpg', 'jpeg', 'png', 'webp'];
-
-  /* 额外的备选目录，一般用不到，留个口子 */
-  var EXTRA_DIRS = Array.isArray(C.extraDirs) ? C.extraDirs : [];
+  var SLOTS = C.plateCount != null ? Number(C.plateCount) : 48;
 
   /* 图版是不是自己导入的（导入后就不再套用配置里的默认答案） */
   function customPlates() {
@@ -132,36 +123,53 @@ var VH_CONFIG = {
     return /^[0-9]+$/.test(v);
   }
 
-  function numbers(override) {
-    if (Array.isArray(C.numbers) && C.numbers.length && override == null) return C.numbers.slice();
-
-    var n = override != null ? Number(override) : (C.plateCount != null ? Number(C.plateCount) : 12);
-    if (!isFinite(n) || n < 1) n = 0;
-
-    var out = [];
-    for (var i = 1; i <= n; i++) out.push(i);
-    return out;
-  }
-
   function choicesOf(idx) {
     var c = C.choices && C.choices[idx];
     return Array.isArray(c) ? c.slice() : null;
   }
 
-  function computePlates(count) {
-    return numbers(count).map(function (idx) {
-      var ch = choicesOf(idx);
-      return {
-        idx: idx,
-        id: 'p' + idx,
-        stem: padNum(idx),
-        choices: ch,
-        note: (C.notes && C.notes[idx]) || ''
-      };
-    });
+  /* 一张图：entry 来自导入清单（{idx, stem, ext}），没有 entry 就是空位 */
+  function makePlate(idx, entry) {
+    var stem = entry && entry.stem ? String(entry.stem) : padNum(idx);
+    var src = '';
+
+    if (entry) {
+      if (entry.src) src = entry.src;
+      else if (stem) src = PLATE_DIR + stem + '.' + (entry.ext || 'jpg');
+    }
+
+    return {
+      idx: idx,
+      id: 'p' + idx,
+      stem: stem,
+      fileName: entry && entry.name ? String(entry.name) : '',
+      src: src,
+      choices: choicesOf(idx),
+      note: (C.notes && C.notes[idx]) || ''
+    };
   }
 
-  var plates = computePlates(null);
+  /* 没有任何导入记录时：只摆出占位格子，不猜任何文件 */
+  function emptySlots(n) {
+    var out = [];
+    for (var i = 1; i <= n; i++) out.push(makePlate(i, null));
+    return out;
+  }
+
+  /* 有导入记录时：读哪几张、顺序如何，完全由清单决定 */
+  function buildPlates() {
+    var st = global.VH && global.VH.store;
+    var list = (st && st.platesList) ? st.platesList() : [];
+
+    if (list && list.length) {
+      return list.map(function (entry) {
+        return makePlate(Number(entry.idx), entry);
+      });
+    }
+    return emptySlots(isFinite(SLOTS) && SLOTS > 0 ? SLOTS : 0);
+  }
+
+  var plates = buildPlates();
 
   /* 正式答案：配置里的值 */
   function configAnswer(idx) {
@@ -222,23 +230,13 @@ var VH_CONFIG = {
     return { numbers: nums, figures: figs };
   }
 
-  function imageUrl(plate, ext) {
-    return DIR + plate.stem + '.' + ext;
-  }
-
-  /* 候选地址：按目录顺序 × 扩展名顺序排列 */
-  function candidates(plate) {
-    var out = [];
-    [DIR].concat(EXTRA_DIRS).forEach(function (dir) {
-      EXTS.forEach(function (ext) {
-        out.push(dir + plate.stem + '.' + ext);
-      });
-    });
-    return out;
+  /* 图片地址：清单里写的是哪张就读哪张，不做任何猜测 */
+  function imageUrl(plate) {
+    return plate.src || '';
   }
 
   /* ------------------------------------------------------------
-     图片探测：依次尝试扩展名，结果缓存，避免重复 404
+     图片加载：一张图只有一个地址，加载失败就是缺图
      ------------------------------------------------------------ */
 
   var resolveCache = {};   // id -> url | null
@@ -249,30 +247,31 @@ var VH_CONFIG = {
       cb(resolveCache[plate.id]);
       return;
     }
+
+    if (!plate.src) {
+      resolveCache[plate.id] = null;
+      cb(null);
+      return;
+    }
+
     if (pending[plate.id]) {
       pending[plate.id].push(cb);
       return;
     }
     pending[plate.id] = [cb];
 
-    var list = candidates(plate);
-    var i = 0;
     var probe = new Image();
 
     function done(url) {
       resolveCache[plate.id] = url;
-      var list2 = pending[plate.id] || [];
+      var queue = pending[plate.id] || [];
       delete pending[plate.id];
-      list2.forEach(function (fn) { fn(url); });
+      queue.forEach(function (fn) { fn(url); });
     }
 
     probe.onload = function () { done(probe.src); };
-    probe.onerror = function () {
-      i++;
-      if (i >= list.length) { done(null); return; }
-      probe.src = list[i];
-    };
-    probe.src = list[0];
+    probe.onerror = function () { done(null); };
+    probe.src = plate.src;
   }
 
   function applyImage(img, plate, onMissing) {
@@ -290,14 +289,11 @@ var VH_CONFIG = {
   }
 
   /* ------------------------------------------------------------
-     导入 / 清空图版后重新计算张数，并清掉图片探测缓存
+     导入 / 清空图版后重建清单，并清掉图片加载缓存
      ------------------------------------------------------------ */
 
   function rebuild() {
-    var st = global.VH && global.VH.store;
-    var count = (customPlates() && st && st.platesCount) ? st.platesCount() : 0;
-
-    plates = computePlates(count > 0 ? count : null);
+    plates = buildPlates();
     resolveCache = {};
     pending = {};
 

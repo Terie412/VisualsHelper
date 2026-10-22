@@ -57,13 +57,14 @@ python3 serve.py
 ## 导入图版
 
 1. 用 `start.bat`（或 `python3 serve.py`）启动。
-2. 右上角齿轮 → **图版图片** → **导入图片…**
-3. 一次可多选，只收 `jpg / jpeg / png / webp`；按文件名排好序后依次编号 `001`、`002` …
-4. 图片落到 `temp/plates/`（`.gitignore` 里，不会被提交），张数记进 `data/layout.json`。
+2. 右上角齿轮 → **图版图片**，填一个放图片的目录（或点「浏览…」选一个），再点 **导入这个目录**。
+3. 只复制该目录**第一层**的图片（不进子目录），支持 `jpg / jpeg / png / webp / bmp / gif`；
+   按文件名排序后依次编号 `001`、`002` …
+4. 图片复制到 `temp/plates/`（映射目录，在 `.gitignore` 里，不会被提交），导入清单记进 `data/layout.json`。
 5. 回到学习页，点卡片下方的**答案条**逐张标注答案；标过的题才会进考试。
 
-换一套图会覆盖旧的，并把排列、行备注、行勾选、答案一起清空；学习页顶部会提示这次导入了多少张。
-「清空已导入图片」会把 `temp/plates/` 里的图删掉，回到 48 个空位。
+重新导入会**先清空映射目录和已有的答案**，再复制新目录的图片（排列、行备注、行勾选也一并重置）。
+「清空已导入图片」会删掉 `temp/plates/` 里的映射图片，回到 48 个空位。
 
 ---
 
@@ -157,11 +158,11 @@ js/app.js           视图切换、设置
 serve.py            本地服务器 + 数据读写接口
 start.bat           Windows 一键启动
 assets/ishihara/    8 张公版国际版图版
-temp/plates/        自己导入的图版（不入库）
+temp/plates/        导入时生成的映射目录（不入库）
 ```
 
-> `data/` 是运行数据（布局、答案、行勾选、图版张数），随仓库一起版本化，便于换机器直接复用。
-> `temp/` 整个目录在 `.gitignore` 里：自己导入的图版放在 `temp/plates/`，不会被提交。
+> `data/` 是运行数据（布局、答案、行勾选、导入清单），随仓库一起版本化，便于换机器直接复用。
+> `temp/` 整个目录在 `.gitignore` 里：导入时复制过来的图片在 `temp/plates/`，不会被提交。
 
 ---
 
@@ -179,7 +180,7 @@ answers: {
 ```
 
 - 想给图形题也做考试，在 `choices` 里配选项，它就会变成按钮选择题。
-- 换图：设置 → 图版图片 → 导入图片…，按文件名排序编号。编号想自己定，就先把文件重命名成 `001.jpg`、`002.jpg` 再导入。
+- 换图：设置 → 图版图片 → 填/选目录 → **导入这个目录**。编号按文件名排序自动生成；想自己定顺序，就先把文件改名成 `001.jpg`、`002.jpg` 这样。
 - 也可以直接在学习页点答案条改，改完存进 `data/layout.json`。
 - `answers` 里是自带的默认答案。一旦换成自备图版，这套默认答案会被忽略，只认你手动标注的。
 
@@ -190,9 +191,9 @@ answers: {
 所有布局、行备注、答案、设置都存在项目下的 **`data/layout.json`** —— 一个普通 JSON 文件，
 和浏览器、启动方式、清缓存都没关系。想备份就复制它，想换电脑就带着它。
 
-服务器提供几个接口：`GET/POST /api/data` 读写数据；`GET /api/plates` 列出已导入图版、
-`POST /api/plates?stem=&ext=` 上传一张、`POST /api/plates/clear` 清空。前端每次改动后自动保存（防抖 220ms）。
-`data/layout.json` 随仓库一起版本化，图版图片在 `temp/plates/`，不入库。
+服务器提供几个接口：`GET/POST /api/data` 读写数据；`GET /api/plates` 列出已映射的图片，
+`POST /api/plates/import` 按目录导入、`POST /api/plates/pick` 弹系统目录选择框、`POST /api/plates/clear` 清空。
+前端每次改动后自动保存（防抖 220ms）。`data/layout.json` 存布局、答案和导入清单；图片只在 `temp/plates/`。
 
 **从旧版本迁移**（之前用 `file://` 双击打开过的话，只需做一次）：
 双击 `index.html` → 齿轮 → 「备份到文件」，得到下载目录里的 `visuals-helper-layout.json`；
@@ -206,6 +207,6 @@ answers: {
 - `assets/ishihara/`：Wellcome Collection 收藏的 Ishihara 图版扫描件，授权 CC BY 4.0，
   原件见 <https://wellcomecollection.org/collections>。图版原作 Shinobu Ishihara（1879–1963），
   著作权已过期。本项目对其做了自动裁切、缩放和压缩。
-- 其余图版由使用者自行导入，只存在于本机 `temp/plates/`，不进版本库。
+- 其余图版由使用者自行导入，导入时会复制到本机 `temp/plates/`，不进版本库。
 
 本项目代码仅供学习交流。色觉异常的诊断请以医疗机构结论为准。

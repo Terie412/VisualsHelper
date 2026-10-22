@@ -13,7 +13,7 @@ import sys
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PLATES = os.path.join(ROOT, "temp", "plates")
+PLATES = os.path.join(ROOT, "temp", "plates")  # 导入生成的映射目录
 OUT = os.path.join(ROOT, "data", "similarity.json")
 
 SIZE = 56

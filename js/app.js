@@ -104,8 +104,6 @@
 
   /* ---------------------------------------------------------- 图版导入 */
 
-  var PLATE_RE = /\.(jpe?g|png|webp)$/i;
-
   function setPlateStatus(text, isErr) {
     var box = $('plates-status');
     if (!box) return;
@@ -115,113 +113,97 @@
 
   function paintPlateStatus() {
     if (VH.store.customPlates()) {
-      setPlateStatus('已导入 ' + VH.store.platesCount() + ' 张自备图版，答案需要自己标注。');
+      var src = VH.store.platesSourceDir();
+      setPlateStatus('已导入 ' + VH.store.platesCount() + ' 张'
+        + (src ? '，来源目录：' + src : '')
+        + '。图片在 temp/plates/，答案需要自己标注。');
     } else {
-      setPlateStatus('仓库不附带图版。导入后按文件名顺序编号 001、002 …，换一套图会覆盖旧的。');
+      setPlateStatus('还没导入。指定一个放图片的目录，会把它下面的图片复制到 temp/plates/。');
     }
   }
 
-  function padStem(n) {
-    var s = String(n);
-    while (s.length < 3) s = '0' + s;
-    return s;
-  }
-
-  function postForm(url) {
-    return fetch(url, { method: 'POST' }).then(function (r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
+  /* 统一处理 JSON 接口：HTTP 错或 {ok:false} 都当失败 */
+  function postJson(url, payload) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {})
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (data) {
+        if (!r.ok || !data.ok) throw new Error(data.error || ('HTTP ' + r.status));
+        return data;
+      });
     });
   }
 
-  function importPlates(fileList) {
+  function browsePlatesDir() {
+    setPlateStatus('正在等待选择目录…');
+
+    postJson('/api/plates/pick').then(function (data) {
+      if (!data.dir) {
+        paintPlateStatus();
+        return;
+      }
+      $('plates-dir').value = data.dir;
+      setPlateStatus('已选好目录，点「导入」开始复制。');
+    }).catch(function (e) {
+      setPlateStatus('打开目录选择框失败：' + e.message, true);
+    });
+  }
+
+  function importPlatesDir() {
     if (VH.store.mode() !== 'file') {
       setPlateStatus('导入需要本地服务器：请用 start.bat 或 python serve.py 打开。', true);
       return;
     }
 
-    var all = Array.prototype.slice.call(fileList || []);
-    var files = all.filter(function (f) {
-      return /^image\//i.test(f.type || '') && PLATE_RE.test(f.name || '');
-    });
-    var skipped = all.length - files.length;
-
-    if (!files.length) {
-      setPlateStatus('没有可导入的图片，只接受 jpg / jpeg / png / webp。', true);
+    var dir = ($('plates-dir').value || '').trim();
+    if (!dir) {
+      setPlateStatus('先填一个目录，或者点「浏览…」选一个。', true);
       return;
     }
 
-    var busy = VH.store.customPlates() || VH.store.answerCount() > 0 || VH.store.platesCount() > 0;
-    if (busy && !global.confirm('导入会替换当前全部图版，并清空已标注的答案。继续？')) {
+    if (VH.store.customPlates()
+      && !global.confirm('重新导入会清空映射目录，并清空已标注的答案。继续？')) {
       paintPlateStatus();
       return;
     }
 
-    files.sort(function (a, b) {
-      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-    });
-
     var btn = $('btn-import-plates');
-    var total = files.length;
-    var done = 0;
-    var stopped = false;
-
-    function fail(msg) {
-      if (stopped) return;
-      stopped = true;
-      if (btn) btn.disabled = false;
-      setPlateStatus(msg, true);
-    }
-
-    function step() {
-      if (done >= total) { finish(); return; }
-
-      var f = files[done];
-      var ext = (f.name.split('.').pop() || 'jpg').toLowerCase();
-      var url = '/api/plates?stem=' + encodeURIComponent(padStem(done + 1))
-        + '&ext=' + encodeURIComponent(ext);
-
-      setPlateStatus('正在导入 ' + (done + 1) + ' / ' + total + '：' + f.name);
-
-      fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': f.type || 'application/octet-stream' },
-        body: f
-      }).then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        done++;
-        step();
-      }).catch(function (e) {
-        fail('导入失败（已写入 ' + done + ' 张）：' + e.message);
-      });
-    }
-
-    function finish() {
-      VH.store.savePlatesMeta(true, total);
-      VH.store.resetForNewPlates();
-      try {
-        sessionStorage.setItem('vh.plates.justImported', String(total));
-        if (skipped > 0) sessionStorage.setItem('vh.plates.skipped', String(skipped));
-      } catch (e) { /* 隐私模式就算了 */ }
-      // 等数据真正写进 layout.json 再刷新，否则这次改动会丢
-      VH.store.flush().then(function () { global.location.reload(); });
-    }
-
     if (btn) btn.disabled = true;
+    setPlateStatus('正在复制图片…');
 
-    // 先清空旧图，免得上一套的数量残留
-    postForm('/api/plates/clear')
-      .then(function () { step(); })
-      .catch(function (e) { fail('清空旧图版失败：' + e.message); });
+    postJson('/api/plates/import', { dir: dir }).then(function (data) {
+      var list = data.plates || [];
+
+      VH.store.savePlatesSourceDir(data.dir || dir);
+      VH.store.savePlatesList(list);
+      VH.store.resetForNewPlates();          // 换了一套图：排列、备注、答案都清掉
+
+      try {
+        sessionStorage.setItem('vh.plates.justImported', String(list.length));
+      } catch (e) { /* 隐私模式就算了 */ }
+
+      // 等数据真正写进 layout.json 再刷新，否则这次改动会丢
+      return VH.store.flush();
+    }).then(function () {
+      global.location.reload();
+    }).catch(function (e) {
+      if (btn) btn.disabled = false;
+      setPlateStatus('导入失败：' + e.message, true);
+    });
   }
 
   function clearPlates() {
-    if (!global.confirm('清空已导入的图版？图片会从 temp/plates/ 删除，已标注的答案也会一并清空。')) return;
+    if (!global.confirm('清空已导入的图版？会删掉 temp/plates/ 里的图片，并清空答案。')) return;
 
-    postForm('/api/plates/clear').then(function () {
-      VH.store.savePlatesMeta(false, 0);
+    postJson('/api/plates/clear').then(function () {
+      VH.store.savePlatesList([]);
+      VH.store.savePlatesSourceDir('');
       VH.store.resetForNewPlates();
-      VH.store.flush().then(function () { global.location.reload(); });
+      return VH.store.flush();
+    }).then(function () {
+      global.location.reload();
     }).catch(function (e) {
       setPlateStatus('清空失败：' + e.message, true);
     });
@@ -233,18 +215,14 @@
     if (!box) return;
 
     var raw = null;
-    var skipped = 0;
     try {
       raw = sessionStorage.getItem('vh.plates.justImported');
-      skipped = Number(sessionStorage.getItem('vh.plates.skipped')) || 0;
       sessionStorage.removeItem('vh.plates.justImported');
-      sessionStorage.removeItem('vh.plates.skipped');
     } catch (e) { return; }
 
     if (!raw) return;
 
-    var text = '已导入 ' + raw + ' 张图版。点卡片下方的答案条逐张标注答案，标注过才会进考试。';
-    if (skipped > 0) text += ' 另有 ' + skipped + ' 个文件不是支持的图片格式，已跳过。';
+    var text = '已导入 ' + raw + ' 张图，答案已清空。点卡片下方的答案条逐张标注，标注过才会进考试。';
 
     box.textContent = text;
     box.hidden = false;
@@ -305,14 +283,18 @@
     $('btn-export').addEventListener('click', exportLayout);
 
     var btnImport = $('btn-import-plates');
-    var fileInput = $('file-plates');
-    if (btnImport && fileInput) {
-      btnImport.addEventListener('click', function () {
-        fileInput.value = '';
-        fileInput.click();
-      });
-      fileInput.addEventListener('change', function () {
-        importPlates(fileInput.files);
+    if (btnImport) btnImport.addEventListener('click', importPlatesDir);
+
+    var btnBrowse = $('btn-plates-dir');
+    if (btnBrowse) btnBrowse.addEventListener('click', browsePlatesDir);
+
+    var dirInput = $('plates-dir');
+    if (dirInput) {
+      dirInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          importPlatesDir();
+        }
       });
     }
 

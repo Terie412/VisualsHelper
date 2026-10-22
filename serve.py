@@ -7,12 +7,13 @@
 import http.server
 import json
 import os
+import re
 import shutil
 import socket
 import socketserver
+import subprocess
 import sys
 import threading
-import urllib.parse
 import webbrowser
 
 try:
@@ -29,10 +30,12 @@ BASE_PORT = 8777
 DATA_DIR = os.path.join(ROOT, "data")
 DATA_FILE = os.path.join(DATA_DIR, "layout.json")
 
-# 图版：由使用者自己导入到这里（整个 temp/ 已在 .gitignore 中）
+# 图版映射目录：导入时把用户指定目录下的图片平铺复制到这里，页面只读这里。
+# 整个 temp/ 已在 .gitignore 中，重导入会清空重建。
 PLATE_DIR = os.path.join(ROOT, "temp", "plates")
-PLATE_EXTS = ("jpg", "jpeg", "png", "webp")
-PLATE_MAX_BYTES = 20 * 1024 * 1024
+PLATE_EXTS = ("jpg", "jpeg", "png", "webp", "bmp", "gif")
+PLATE_MAX_FILES = 300
+PLATE_MAX_BYTES = 30 * 1024 * 1024
 
 # 第一次启动时，如果浏览器里导出的备份躺在下载目录，自动搬过来
 DOWNLOAD_DIR = os.path.join(os.path.expanduser("~"), "Downloads")
@@ -53,8 +56,14 @@ def migrate_backup():
     return True
 
 
+def natural_key(name):
+    """文件名自然排序：002.jpg 排在 10.jpg 前面。"""
+    parts = re.split(r"(\d+)", name.lower())
+    return [int(p) if p.isdigit() else p for p in parts]
+
+
 def list_plates():
-    """temp/plates 里已导入的图版，按图号排序。"""
+    """映射目录里现有的图版，按图号排序。"""
     if not os.path.isdir(PLATE_DIR):
         return []
 
@@ -63,14 +72,14 @@ def list_plates():
         stem, ext = os.path.splitext(name)
         ext = ext.lower().lstrip(".")
         if stem.isdigit() and ext in PLATE_EXTS:
-            out.append({"stem": stem, "ext": ext})
+            out.append({"idx": int(stem), "stem": stem, "ext": ext})
 
-    out.sort(key=lambda it: int(it["stem"]))
+    out.sort(key=lambda it: it["idx"])
     return out
 
 
 def clear_plates():
-    """清空已导入的图版，只删图片，不动别的文件。"""
+    """清空映射目录，只删图片，不动别的文件。"""
     if not os.path.isdir(PLATE_DIR):
         return 0
 
@@ -84,6 +93,80 @@ def clear_plates():
             except OSError:
                 pass
     return removed
+
+
+def import_dir(src):
+    """把 src 目录下的图片平铺复制到映射目录，返回导入清单。
+
+    不递归子目录，按文件名自然排序后编号 001、002 …
+    """
+    src = os.path.abspath(os.path.expanduser(str(src or "").strip().strip('"')))
+
+    if not os.path.isdir(src):
+        raise ValueError("目录不存在：%s" % src)
+
+    # 源就是映射目录本身：不复制、不清空，直接按现有文件建清单
+    if os.path.normcase(src) == os.path.normcase(os.path.abspath(PLATE_DIR)):
+        existing = list_plates()
+        if not existing:
+            raise ValueError("映射目录是空的，请选择放图片的目录")
+        return {"dir": src, "plates": existing}
+
+    picked = []
+    for name in os.listdir(src):
+        path = os.path.join(src, name)
+        if not os.path.isfile(path):
+            continue
+        ext = os.path.splitext(name)[1].lower().lstrip(".")
+        if ext not in PLATE_EXTS:
+            continue
+        picked.append((name, path, ext))
+
+    picked.sort(key=lambda it: natural_key(it[0]))
+
+    if not picked:
+        raise ValueError("这个目录下没有图片（支持 %s）" % " / ".join(PLATE_EXTS))
+    if len(picked) > PLATE_MAX_FILES:
+        raise ValueError("图片太多（%d 张），上限 %d 张" % (len(picked), PLATE_MAX_FILES))
+
+    os.makedirs(PLATE_DIR, exist_ok=True)
+    clear_plates()
+
+    plates = []
+    for i, (name, path, ext) in enumerate(picked, 1):
+        if os.path.getsize(path) > PLATE_MAX_BYTES:
+            raise ValueError("单张图超过 %d MB：%s"
+                             % (PLATE_MAX_BYTES // 1024 // 1024, name))
+        stem = "%03d" % i
+        shutil.copyfile(path, os.path.join(PLATE_DIR, "%s.%s" % (stem, ext)))
+        plates.append({"idx": i, "stem": stem, "ext": ext, "name": name})
+
+    return {"dir": src, "plates": plates}
+
+
+def pick_dir():
+    """弹系统原生目录选择框，返回所选绝对路径；取消则返回空串。"""
+    script = (
+        "import tkinter as tk\n"
+        "from tkinter import filedialog\n"
+        "r = tk.Tk()\n"
+        "r.withdraw()\n"
+        "r.attributes('-topmost', True)\n"
+        "p = filedialog.askdirectory(title='选择放图片的目录')\n"
+        "r.destroy()\n"
+        "print(p or '')\n"
+    )
+
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
+
+    try:
+        out = subprocess.run([sys.executable, "-c", script],
+                             capture_output=True, text=True,
+                             timeout=180, creationflags=flags)
+    except Exception:
+        return ""
+
+    return (out.stdout or "").strip()
 
 
 def pick_port():
@@ -122,53 +205,32 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     # ---------- /api/plates ----------
 
-    def _handle_plate_upload(self, query):
-        params = urllib.parse.parse_qs(query)
-        stem = (params.get("stem") or [""])[0].strip()
-        ext = (params.get("ext") or [""])[0].strip().lower().lstrip(".")
-
-        if not stem.isdigit() or not (1 <= len(stem) <= 4):
-            self._send_json({"ok": False, "error": "bad stem"}, 400)
-            return
-        if ext not in PLATE_EXTS:
-            self._send_json({"ok": False, "error": "unsupported ext"}, 400)
-            return
-
+    def _read_body(self):
         try:
             length = int(self.headers.get("Content-Length", 0))
         except ValueError:
             length = 0
+        return self.rfile.read(length) if length > 0 else b""
 
-        if length <= 0:
-            self._send_json({"ok": False, "error": "empty body"}, 400)
-            return
-        if length > PLATE_MAX_BYTES:
-            self._send_json({"ok": False, "error": "too large"}, 413)
-            return
+    def _handle_plate_import(self):
+        raw = self._read_body()
 
-        raw = self.rfile.read(length)
-        if len(raw) != length:
-            self._send_json({"ok": False, "error": "short body"}, 400)
+        try:
+            data = json.loads(raw.decode("utf-8")) if raw else {}
+        except Exception:
+            self._send_json({"ok": False, "error": "bad json"}, 400)
             return
 
         try:
-            os.makedirs(PLATE_DIR, exist_ok=True)
-
-            # 同一图号只留一份：换扩展名重导入时把旧文件删掉
-            for old in PLATE_EXTS:
-                if old == ext:
-                    continue
-                stale = os.path.join(PLATE_DIR, "%s.%s" % (stem, old))
-                if os.path.exists(stale):
-                    os.remove(stale)
-
-            with open(os.path.join(PLATE_DIR, "%s.%s" % (stem, ext)), "wb") as f:
-                f.write(raw)
+            result = import_dir((data or {}).get("dir", ""))
+        except ValueError as e:
+            self._send_json({"ok": False, "error": str(e)}, 400)
+            return
         except Exception as e:
             self._send_json({"ok": False, "error": str(e)}, 500)
             return
 
-        self._send_json({"ok": True, "stem": stem, "ext": ext, "bytes": len(raw)})
+        self._send_json({"ok": True, "dir": result["dir"], "plates": result["plates"]})
 
     def do_GET(self):
         path = self.path.split("?")[0]
@@ -191,20 +253,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
-        path, _, query = self.path.partition("?")
+        path = self.path.split("?")[0]
 
         if path == "/api/plates/clear":
-            try:
-                length = int(self.headers.get("Content-Length", 0))
-            except ValueError:
-                length = 0
-            if length:
-                self.rfile.read(length)
+            self._read_body()
             self._send_json({"ok": True, "removed": clear_plates()})
             return
 
-        if path == "/api/plates":
-            self._handle_plate_upload(query)
+        if path == "/api/plates/pick":
+            self._read_body()
+            self._send_json({"ok": True, "dir": pick_dir()})
+            return
+
+        if path == "/api/plates/import":
+            self._handle_plate_import()
             return
 
         if path != "/api/data":

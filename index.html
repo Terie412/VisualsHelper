@@ -234,12 +234,15 @@
         <p class="field-hint">布局和答案存在 <code>data/layout.json</code>，换浏览器也不会丢。这个按钮只是额外下载一份备份。</p>
       </div>
       <div class="field">
-        <label>图版图片</label>
-        <button class="btn ghost block" id="btn-import-plates" type="button">导入图片…</button>
-        <input type="file" id="file-plates" accept="image/jpeg,image/png,image/webp" multiple hidden>
+        <label for="plates-dir">图版图片</label>
+        <div class="path-row">
+          <input type="text" id="plates-dir" class="path-input" placeholder="粘贴目录路径，或点右侧浏览…">
+          <button class="btn ghost" id="btn-plates-dir" type="button">浏览…</button>
+        </div>
+        <button class="btn ghost block" id="btn-import-plates" type="button">导入这个目录</button>
         <p class="field-hint" id="plates-status"></p>
         <button class="btn ghost block" id="btn-clear-plates" type="button">清空已导入图片</button>
-        <p class="field-hint">可一次多选，只收 jpg / png / webp，按文件名顺序编号；导入后到学习页点答案条逐张标注答案。</p>
+        <p class="field-hint">只复制该目录下的图片（不进子目录），按文件名排序编号 001、002 …；导入后到学习页点答案条逐张标注答案。</p>
       </div>
       <div class="field">
         <button class="btn ghost block" id="btn-clear-layout">重置学习页排列</button>

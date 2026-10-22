@@ -1369,3 +1369,39 @@ body.hide-answers .lb-answer {
   background: rgba(255, 255, 255, .06);
   font-size: 11px;
 }
+
+/* 目录导入：路径输入行 */
+.path-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  margin-bottom: 10px;
+}
+
+.path-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-elev-2);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.path-input::placeholder { color: var(--text-faint); }
+
+.path-input:focus {
+  outline: none;
+  border-color: rgba(78, 167, 255, .5);
+  background: #1a2230;
+}
+
+.path-row .btn {
+  flex: none;
+  white-space: nowrap;
+}
+
+.field .btn.block + .field-hint { margin-bottom: 14px; }

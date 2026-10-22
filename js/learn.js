@@ -302,7 +302,7 @@
     var mb = document.createElement('b');
     mb.textContent = '缺图';
     var ms = document.createElement('span');
-    ms.textContent = p.stem + '.jpg';
+    ms.textContent = p.fileName || p.stem;
     missing.appendChild(mb);
     missing.appendChild(ms);
 
