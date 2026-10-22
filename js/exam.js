@@ -78,7 +78,12 @@
       dom.warn.hidden = false;
       dom.warn.textContent = all.length
         ? '有答案的图都在勾了「不考」的行里了，把行左侧的勾去掉再来考试。'
-        : '题库里还没有任何答案，无法开始考试。请在学习页填写答案，或编辑 js/data.js。';
+        : '还没有任何图标注答案，无法开始考试。请在学习页点卡片下方的答案条逐张标注。';
+      dom.startBtn.disabled = true;
+    } else if (pool.length < 4) {
+      // 四选一需要至少 4 个不同答案当干扰项
+      dom.warn.hidden = false;
+      dom.warn.textContent = '目前只有 ' + pool.length + ' 张图标了答案，至少要 4 张才能做四选一。';
       dom.startBtn.disabled = true;
     } else if (off > 0) {
       var parts = [];
