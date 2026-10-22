@@ -335,7 +335,7 @@
   function paintAnswer(node, p) {
     while (node.firstChild) node.removeChild(node.firstChild);
     var a = VH.data.answerOf(p);
-    node.textContent = a || '未设置答案';
+    node.textContent = a || '请点击编辑答案';
     node.classList.toggle('is-empty', !a);
     node.title = '点击修改答案';
   }
