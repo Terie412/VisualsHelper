@@ -118,6 +118,25 @@
     pushToFile();
   }
 
+  /* 立刻写入，不等防抖。刷新/跳转前要先等它完成 */
+  function flush() {
+    writeLocal();
+
+    if (mode !== 'file') return Promise.resolve(false);
+
+    clearTimeout(saveTimer);
+    try {
+      return fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state)
+      }).then(function (r) { return !!r.ok; })
+        .catch(function () { return false; });
+    } catch (e) {
+      return Promise.resolve(false);
+    }
+  }
+
   function ensure() {
     if (!state) state = {};
     if (!state.rowNotes) state.rowNotes = {};
@@ -277,6 +296,41 @@
 
     clearAnswerOverrides: function () {
       ensure().answers = {};
+      persist();
+    },
+
+    answerCount: function () {
+      return Object.keys(ensure().answers || {}).length;
+    },
+
+    /* --- 自备图版（导入的图片放 temp/plates/，不入库） --- */
+    customPlates: function () {
+      return !!ensure().customPlates;
+    },
+
+    platesCount: function () {
+      var n = Number(ensure().platesCount);
+      return (isFinite(n) && n > 0) ? Math.round(n) : 0;
+    },
+
+    savePlatesMeta: function (custom, count) {
+      var s = ensure();
+      s.customPlates = !!custom;
+      if (custom && count > 0) s.platesCount = Math.round(count);
+      else delete s.platesCount;
+      persist();
+    },
+
+    /* 立刻提交待写的数据，返回 Promise */
+    flush: flush,
+
+    /* 换一套新图版时，旧的排列、行备注、行勾选、答案都不再有意义 */
+    resetForNewPlates: function () {
+      var s = ensure();
+      delete s.grid;
+      delete s.rowNotes;
+      delete s.rowSkip;
+      s.answers = {};
       persist();
     },
 

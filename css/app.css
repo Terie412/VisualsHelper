@@ -1319,3 +1319,53 @@ body.hide-answers .lb-answer {
   font-style: italic;
   font-size: 12px;
 }
+
+/* ============================================================
+   自备图版：导入提示条
+   ============================================================ */
+
+.plate-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 18px 0;
+  padding: 9px 12px 9px 14px;
+  border: 1px solid rgba(78, 167, 255, .26);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+.plate-hint[hidden] { display: none; }
+
+.plate-hint-close {
+  flex: none;
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.plate-hint-close:hover {
+  background: rgba(255, 255, 255, .07);
+  color: var(--text);
+}
+
+.field-hint.is-error { color: var(--bad); }
+
+.field-hint code,
+.field-tip code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .06);
+  font-size: 11px;
+}

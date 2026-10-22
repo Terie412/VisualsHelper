@@ -113,6 +113,20 @@ var VH_CONFIG = {
   var PAD = C.namePad != null ? C.namePad : 3;
   var EXTS = C.extensions || ['jpg', 'jpeg', 'png', 'webp'];
 
+  /* 自备图版目录：仓库里不放受版权保护的图，用户导入的图存在这里 */
+  var IMPORT_DIR = 'temp/plates/';
+
+  /* 是否在使用自备图版（导入过自己的图片） */
+  function customPlates() {
+    var st = global.VH && global.VH.store;
+    return !!(st && st.customPlates && st.customPlates());
+  }
+
+  /* 自备图版优先读导入目录，否则先读仓库目录 */
+  function searchDirs() {
+    return customPlates() ? [IMPORT_DIR, DIR] : [DIR, IMPORT_DIR];
+  }
+
   function padNum(n) {
     var s = String(n);
     while (s.length < PAD) s = '0' + s;
@@ -123,9 +137,12 @@ var VH_CONFIG = {
     return /^[0-9]+$/.test(v);
   }
 
-  function numbers() {
-    if (Array.isArray(C.numbers) && C.numbers.length) return C.numbers.slice();
-    var n = C.plateCount != null ? Number(C.plateCount) : 12;
+  function numbers(override) {
+    if (Array.isArray(C.numbers) && C.numbers.length && override == null) return C.numbers.slice();
+
+    var n = override != null ? Number(override) : (C.plateCount != null ? Number(C.plateCount) : 12);
+    if (!isFinite(n) || n < 1) n = 0;
+
     var out = [];
     for (var i = 1; i <= n; i++) out.push(i);
     return out;
@@ -136,16 +153,20 @@ var VH_CONFIG = {
     return Array.isArray(c) ? c.slice() : null;
   }
 
-  var plates = numbers().map(function (idx) {
-    var ch = choicesOf(idx);
-    return {
-      idx: idx,
-      id: 'p' + idx,
-      stem: padNum(idx),
-      choices: ch,
-      note: (C.notes && C.notes[idx]) || ''
-    };
-  });
+  function computePlates(count) {
+    return numbers(count).map(function (idx) {
+      var ch = choicesOf(idx);
+      return {
+        idx: idx,
+        id: 'p' + idx,
+        stem: padNum(idx),
+        choices: ch,
+        note: (C.notes && C.notes[idx]) || ''
+      };
+    });
+  }
+
+  var plates = computePlates(null);
 
   /* 正式答案：配置里的值 */
   function configAnswer(idx) {
@@ -158,6 +179,8 @@ var VH_CONFIG = {
     var store = global.VH && global.VH.store;
     var ov = store ? store.answerOverride(plate.idx) : null;
     if (ov != null && ov !== '') return ov;
+    // 自备图版和书上的图不是一套，配置里的答案对不上，只认手动标注
+    if (customPlates()) return '';
     return configAnswer(plate.idx);
   }
 
@@ -186,17 +209,13 @@ var VH_CONFIG = {
   }
 
   /* 候选答案池：数字和图形分开，避免出现「21 / 牛 / 茶壶」这种一眼能排除的选项 */
-  var poolCache = null;
-
   function answerPools() {
-    if (poolCache) return poolCache;
-
     var nums = [];
     var figs = [];
     var seen = {};
 
     plates.forEach(function (p) {
-      var raw = configAnswer(p.idx);
+      var raw = answerOf(p);
       var key = normalize(raw);
       if (!key || seen[key]) return;
       seen[key] = true;
@@ -205,12 +224,22 @@ var VH_CONFIG = {
       else figs.push(raw);
     });
 
-    poolCache = { numbers: nums, figures: figs };
-    return poolCache;
+    return { numbers: nums, figures: figs };
   }
 
   function imageUrl(plate, ext) {
     return DIR + plate.stem + '.' + ext;
+  }
+
+  /* 候选地址：按目录顺序 × 扩展名顺序排列 */
+  function candidates(plate) {
+    var out = [];
+    searchDirs().forEach(function (dir) {
+      EXTS.forEach(function (ext) {
+        out.push(dir + plate.stem + '.' + ext);
+      });
+    });
+    return out;
   }
 
   /* ------------------------------------------------------------
@@ -231,23 +260,24 @@ var VH_CONFIG = {
     }
     pending[plate.id] = [cb];
 
+    var list = candidates(plate);
     var i = 0;
     var probe = new Image();
 
     function done(url) {
       resolveCache[plate.id] = url;
-      var list = pending[plate.id] || [];
+      var list2 = pending[plate.id] || [];
       delete pending[plate.id];
-      list.forEach(function (fn) { fn(url); });
+      list2.forEach(function (fn) { fn(url); });
     }
 
     probe.onload = function () { done(probe.src); };
     probe.onerror = function () {
       i++;
-      if (i >= EXTS.length) { done(null); return; }
-      probe.src = imageUrl(plate, EXTS[i]);
+      if (i >= list.length) { done(null); return; }
+      probe.src = list[i];
     };
-    probe.src = imageUrl(plate, EXTS[0]);
+    probe.src = list[0];
   }
 
   function applyImage(img, plate, onMissing) {
@@ -264,6 +294,26 @@ var VH_CONFIG = {
     });
   }
 
+  /* ------------------------------------------------------------
+     导入 / 清空图版后重新计算张数，并清掉图片探测缓存
+     ------------------------------------------------------------ */
+
+  function rebuild() {
+    var st = global.VH && global.VH.store;
+    var count = (customPlates() && st && st.platesCount) ? st.platesCount() : 0;
+
+    plates = computePlates(count > 0 ? count : null);
+    resolveCache = {};
+    pending = {};
+
+    var api = global.VH && global.VH.data;
+    if (api) {
+      api.plates = plates;
+      api.total = plates.length;
+    }
+    return plates;
+  }
+
   global.VH = global.VH || {};
   global.VH.data = {
     plates: plates,
@@ -274,7 +324,9 @@ var VH_CONFIG = {
     examinable: examinable,
     applyImage: applyImage,
     imageUrl: imageUrl,
-    answerPools: answerPools
+    answerPools: answerPools,
+    isCustom: customPlates,
+    rebuild: rebuild
   };
 
 })(window);

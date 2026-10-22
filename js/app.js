@@ -102,6 +102,163 @@
     };
   }
 
+  /* ---------------------------------------------------------- 图版导入 */
+
+  var PLATE_RE = /\.(jpe?g|png|webp)$/i;
+
+  function setPlateStatus(text, isErr) {
+    var box = $('plates-status');
+    if (!box) return;
+    box.textContent = text;
+    box.classList.toggle('is-error', !!isErr);
+  }
+
+  function paintPlateStatus() {
+    if (VH.store.customPlates()) {
+      setPlateStatus('已导入 ' + VH.store.platesCount() + ' 张自备图版，答案需要自己标注。');
+    } else {
+      setPlateStatus('仓库不附带图版。导入后按文件名顺序编号 001、002 …，换一套图会覆盖旧的。');
+    }
+  }
+
+  function padStem(n) {
+    var s = String(n);
+    while (s.length < 3) s = '0' + s;
+    return s;
+  }
+
+  function postForm(url) {
+    return fetch(url, { method: 'POST' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    });
+  }
+
+  function importPlates(fileList) {
+    if (VH.store.mode() !== 'file') {
+      setPlateStatus('导入需要本地服务器：请用 start.bat 或 python serve.py 打开。', true);
+      return;
+    }
+
+    var all = Array.prototype.slice.call(fileList || []);
+    var files = all.filter(function (f) {
+      return /^image\//i.test(f.type || '') && PLATE_RE.test(f.name || '');
+    });
+    var skipped = all.length - files.length;
+
+    if (!files.length) {
+      setPlateStatus('没有可导入的图片，只接受 jpg / jpeg / png / webp。', true);
+      return;
+    }
+
+    var busy = VH.store.customPlates() || VH.store.answerCount() > 0 || VH.store.platesCount() > 0;
+    if (busy && !global.confirm('导入会替换当前全部图版，并清空已标注的答案。继续？')) {
+      paintPlateStatus();
+      return;
+    }
+
+    files.sort(function (a, b) {
+      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    var btn = $('btn-import-plates');
+    var total = files.length;
+    var done = 0;
+    var stopped = false;
+
+    function fail(msg) {
+      if (stopped) return;
+      stopped = true;
+      if (btn) btn.disabled = false;
+      setPlateStatus(msg, true);
+    }
+
+    function step() {
+      if (done >= total) { finish(); return; }
+
+      var f = files[done];
+      var ext = (f.name.split('.').pop() || 'jpg').toLowerCase();
+      var url = '/api/plates?stem=' + encodeURIComponent(padStem(done + 1))
+        + '&ext=' + encodeURIComponent(ext);
+
+      setPlateStatus('正在导入 ' + (done + 1) + ' / ' + total + '：' + f.name);
+
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': f.type || 'application/octet-stream' },
+        body: f
+      }).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        done++;
+        step();
+      }).catch(function (e) {
+        fail('导入失败（已写入 ' + done + ' 张）：' + e.message);
+      });
+    }
+
+    function finish() {
+      VH.store.savePlatesMeta(true, total);
+      VH.store.resetForNewPlates();
+      try {
+        sessionStorage.setItem('vh.plates.justImported', String(total));
+        if (skipped > 0) sessionStorage.setItem('vh.plates.skipped', String(skipped));
+      } catch (e) { /* 隐私模式就算了 */ }
+      // 等数据真正写进 layout.json 再刷新，否则这次改动会丢
+      VH.store.flush().then(function () { global.location.reload(); });
+    }
+
+    if (btn) btn.disabled = true;
+
+    // 先清空旧图，免得上一套的数量残留
+    postForm('/api/plates/clear')
+      .then(function () { step(); })
+      .catch(function (e) { fail('清空旧图版失败：' + e.message); });
+  }
+
+  function clearPlates() {
+    if (!global.confirm('清空已导入的图版？图片会从 temp/plates/ 删除，已标注的答案也会一并清空。')) return;
+
+    postForm('/api/plates/clear').then(function () {
+      VH.store.savePlatesMeta(false, 0);
+      VH.store.resetForNewPlates();
+      VH.store.flush().then(function () { global.location.reload(); });
+    }).catch(function (e) {
+      setPlateStatus('清空失败：' + e.message, true);
+    });
+  }
+
+  /* 导入完成重载后，在学习页顶部提示一次 */
+  function showImportHint() {
+    var box = $('plate-hint');
+    if (!box) return;
+
+    var raw = null;
+    var skipped = 0;
+    try {
+      raw = sessionStorage.getItem('vh.plates.justImported');
+      skipped = Number(sessionStorage.getItem('vh.plates.skipped')) || 0;
+      sessionStorage.removeItem('vh.plates.justImported');
+      sessionStorage.removeItem('vh.plates.skipped');
+    } catch (e) { return; }
+
+    if (!raw) return;
+
+    var text = '已导入 ' + raw + ' 张图版。点卡片下方的答案条逐张标注答案，标注过才会进考试。';
+    if (skipped > 0) text += ' 另有 ' + skipped + ' 个文件不是支持的图片格式，已跳过。';
+
+    box.textContent = text;
+    box.hidden = false;
+
+    var close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'plate-hint-close';
+    close.setAttribute('aria-label', '关闭提示');
+    close.textContent = '×';
+    close.addEventListener('click', function () { box.hidden = true; });
+
+    box.appendChild(close);
+  }
+
   /* ---------------------------------------------------------- 布局备份 */
 
   function exportLayout() {
@@ -147,6 +304,23 @@
 
     $('btn-export').addEventListener('click', exportLayout);
 
+    var btnImport = $('btn-import-plates');
+    var fileInput = $('file-plates');
+    if (btnImport && fileInput) {
+      btnImport.addEventListener('click', function () {
+        fileInput.value = '';
+        fileInput.click();
+      });
+      fileInput.addEventListener('change', function () {
+        importPlates(fileInput.files);
+      });
+    }
+
+    var btnClearPlates = $('btn-clear-plates');
+    if (btnClearPlates) btnClearPlates.addEventListener('click', clearPlates);
+
+    paintPlateStatus();
+
     var foot = document.querySelector('.drawer-foot');
     if (foot) {
       foot.textContent = (VH.store.mode() === 'file')
@@ -167,13 +341,17 @@
   /* ---------------------------------------------------------- 启动 */
 
   function init() {
-    var boot = VH.store.boot();
+    var boot = VH.store.boot().then(function () {
+      // 张数取决于有没有导入自备图版，等数据读回来再算一次
+      if (VH.data.rebuild) VH.data.rebuild();
+    });
     var sim = VH.sim ? VH.sim.load() : Promise.resolve();
     Promise.all([boot, sim]).then(startUI);
   }
 
   function startUI() {
     VH.learn.mount();
+    showImportHint();
 
     Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) {
       b.addEventListener('click', function () { switchView(b.dataset.view); });

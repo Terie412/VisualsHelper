@@ -122,7 +122,8 @@
     var answer = VH.data.answerOf(p);
 
     // 按相似度出题：干扰项来自和这张图最像的若干张
-    if (settings.sim && VH.sim && VH.sim.isReady()) {
+    // （similarity.json 是按原书图版算的，换成自备图版后不再适用）
+    if (settings.sim && VH.sim && VH.sim.isReady() && !VH.store.customPlates()) {
       var picked = VH.sim.pickOptions(p, answer, 4);
       if (picked) return shuffle(picked);
     }
