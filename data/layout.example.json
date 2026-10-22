@@ -1,0 +1,10 @@
+{
+  "settings": {
+    "count": 12,
+    "limit": 15,
+    "allow": 1,
+    "sim": true
+  },
+  "cardSize": 180,
+  "showAnswers": true
+}

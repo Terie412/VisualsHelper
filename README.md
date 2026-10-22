@@ -159,10 +159,13 @@ serve.py            本地服务器 + 数据读写接口
 start.bat           Windows 一键启动
 assets/ishihara/    8 张公版国际版图版
 temp/plates/        导入时生成的映射目录（不入库）
+data/layout.json    本机数据（不入库，首次启动自动生成）
+data/layout.example.json  上面那个文件的模板
 ```
 
-> `data/` 是运行数据（布局、答案、行勾选、导入清单），随仓库一起版本化，便于换机器直接复用。
-> `temp/` 整个目录在 `.gitignore` 里：导入时复制过来的图片在 `temp/plates/`，不会被提交。
+> `data/layout.json` 存布局、答案、行勾选和导入清单，属于本机数据，**不在版本库里**；
+> 换机器或备份就手动拷这个文件。首次启动时 `serve.py` 会按 `data/layout.example.json` 自动建一份。
+> `temp/` 整个目录也在 `.gitignore` 里：导入时复制过来的图片在 `temp/plates/`，不会被提交。
 
 ---
 
@@ -190,6 +193,9 @@ answers: {
 
 所有布局、行备注、答案、设置都存在项目下的 **`data/layout.json`** —— 一个普通 JSON 文件，
 和浏览器、启动方式、清缓存都没关系。想备份就复制它，想换电脑就带着它。
+
+这个文件**不进版本库**（在 `.gitignore` 里）：仓库里只有 `data/layout.example.json` 模板，
+首次启动时自动复制成 `data/layout.json`，所以克隆下来是干净的空位，不会带上别人的排列和答案。
 
 服务器提供几个接口：`GET/POST /api/data` 读写数据；`GET /api/plates` 列出已映射的图片，
 `POST /api/plates/import` 按目录导入、`POST /api/plates/pick` 弹系统目录选择框、`POST /api/plates/clear` 清空。

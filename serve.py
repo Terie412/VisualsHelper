@@ -37,23 +37,28 @@ PLATE_EXTS = ("jpg", "jpeg", "png", "webp", "bmp", "gif")
 PLATE_MAX_FILES = 300
 PLATE_MAX_BYTES = 30 * 1024 * 1024
 
-# 第一次启动时，如果浏览器里导出的备份躺在下载目录，自动搬过来
+# 首次启动时准备 data/layout.json：优先搬浏览器导出的备份，否则用仓库里的模板
+EXAMPLE_FILE = os.path.join(DATA_DIR, "layout.example.json")
 DOWNLOAD_DIR = os.path.join(os.path.expanduser("~"), "Downloads")
 DOWNLOAD_BACKUP = os.path.join(DOWNLOAD_DIR, "visuals-helper-layout.json")
 
 
-def migrate_backup():
+def ensure_data_file():
+    """返回 'exists' / 'download' / 'example' / ''。"""
     if os.path.exists(DATA_FILE):
-        return False
-    if not os.path.exists(DOWNLOAD_BACKUP):
-        return False
+        return "exists"
 
     os.makedirs(DATA_DIR, exist_ok=True)
-    shutil.copyfile(DOWNLOAD_BACKUP, DATA_FILE)
-    print("  已从下载目录导入旧布局：")
-    print("  " + DOWNLOAD_BACKUP)
-    print()
-    return True
+
+    if os.path.exists(DOWNLOAD_BACKUP):
+        shutil.copyfile(DOWNLOAD_BACKUP, DATA_FILE)
+        return "download"
+
+    if os.path.exists(EXAMPLE_FILE):
+        shutil.copyfile(EXAMPLE_FILE, DATA_FILE)
+        return "example"
+
+    return ""
 
 
 def natural_key(name):
@@ -312,7 +317,7 @@ def main():
     port = pick_port()
     url = "http://%s:%d/" % (HOST, port)
 
-    moved = migrate_backup()
+    state = ensure_data_file()
 
     threading.Timer(1.0, lambda: webbrowser.open(url)).start()
 
@@ -321,8 +326,18 @@ def main():
     print("  " + url)
     print()
     print("  数据文件：" + DATA_FILE)
-    if not moved:
+
+    if state == "download":
+        print("  已从下载目录导入旧布局：" + DOWNLOAD_BACKUP)
+    elif state == "example":
+        print("  （首次启动，已按 data/layout.example.json 建好数据文件）")
+    else:
         print("  （布局和答案都存在这个文件里，换浏览器、换启动方式都不会丢）")
+
+    if not list_plates():
+        print()
+        print("  还没导入图版：打开页面 → 右上角齿轮 → 填图片目录 → 导入这个目录")
+
     print()
     print("  关掉这个窗口就会停止服务。")
     print()

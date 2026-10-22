@@ -17,11 +17,6 @@ if %errorlevel% equ 0 (
   goto :found
 )
 
-if exist "D:\Softwares\Python\python.exe" (
-  set "PY=D:\Softwares\Python\python.exe"
-  goto :found
-)
-
 echo.
 echo  [!] Python not found.
 echo.
