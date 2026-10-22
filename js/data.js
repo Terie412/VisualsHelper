@@ -1,8 +1,8 @@
 /* ============================================================
    题库配置
    ------------------------------------------------------------
-   图在 assets/plates/，文件名 001.jpg … 048.jpg
-   答案按书页右侧的图形/数字对照整理
+   图由使用者自己导入，落在 temp/plates/，文件名 001.jpg … 048.jpg
+   答案在学习页点答案条逐张标注，存在 data/layout.json
 
    数字答案 → 考试用数字键盘判分
    图形答案 → 只出现在学习页，不参与自动判分（体检时由医生口述判断）
@@ -20,8 +20,8 @@ var VH_CONFIG = {
   /* 文件名数字补零位数 */
   namePad: 3,
 
-  /* 图片目录 */
-  dir: 'assets/plates/',
+  /* 图片目录（导入的图放这里） */
+  dir: 'temp/plates/',
 
   /* 尝试的扩展名顺序 */
   extensions: ['jpg', 'jpeg', 'png', 'webp'],
@@ -109,22 +109,17 @@ var VH_CONFIG = {
 
   var C = global.VH_CONFIG || {};
 
-  var DIR = C.dir != null ? C.dir : 'assets/plates/';
+  var DIR = C.dir != null ? C.dir : 'temp/plates/';
   var PAD = C.namePad != null ? C.namePad : 3;
   var EXTS = C.extensions || ['jpg', 'jpeg', 'png', 'webp'];
 
-  /* 自备图版目录：仓库里不放受版权保护的图，用户导入的图存在这里 */
-  var IMPORT_DIR = 'temp/plates/';
+  /* 额外的备选目录，一般用不到，留个口子 */
+  var EXTRA_DIRS = Array.isArray(C.extraDirs) ? C.extraDirs : [];
 
-  /* 是否在使用自备图版（导入过自己的图片） */
+  /* 图版是不是自己导入的（导入后就不再套用配置里的默认答案） */
   function customPlates() {
     var st = global.VH && global.VH.store;
     return !!(st && st.customPlates && st.customPlates());
-  }
-
-  /* 自备图版优先读导入目录，否则先读仓库目录 */
-  function searchDirs() {
-    return customPlates() ? [IMPORT_DIR, DIR] : [DIR, IMPORT_DIR];
   }
 
   function padNum(n) {
@@ -234,7 +229,7 @@ var VH_CONFIG = {
   /* 候选地址：按目录顺序 × 扩展名顺序排列 */
   function candidates(plate) {
     var out = [];
-    searchDirs().forEach(function (dir) {
+    [DIR].concat(EXTRA_DIRS).forEach(function (dir) {
       EXTS.forEach(function (ext) {
         out.push(dir + plate.stem + '.' + ext);
       });

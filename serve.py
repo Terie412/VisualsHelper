@@ -29,7 +29,7 @@ BASE_PORT = 8777
 DATA_DIR = os.path.join(ROOT, "data")
 DATA_FILE = os.path.join(DATA_DIR, "layout.json")
 
-# 自备图版：仓库里不放受版权保护的图，用户自己导入到这里（已在 .gitignore 中）
+# 图版：由使用者自己导入到这里（整个 temp/ 已在 .gitignore 中）
 PLATE_DIR = os.path.join(ROOT, "temp", "plates")
 PLATE_EXTS = ("jpg", "jpeg", "png", "webp")
 PLATE_MAX_BYTES = 20 * 1024 * 1024
