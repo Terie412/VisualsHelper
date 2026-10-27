@@ -189,64 +189,112 @@
 <!-- 设置 -->
 <div class="drawer" id="drawer" hidden>
   <div class="drawer-backdrop" data-close></div>
-  <aside class="drawer-panel">
+  <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
     <header class="drawer-head">
-      <h3>设置</h3>
+      <h3 id="drawer-title">设置</h3>
       <button class="icon-btn" data-close aria-label="关闭">×</button>
     </header>
-    <div class="drawer-body">
-      <div class="field">
-        <label for="set-count">每次抽题数量</label>
-        <div class="field-row">
-          <input type="range" id="set-count" min="4" max="60" step="1">
-          <output id="set-count-out">12</output>
-        </div>
-        <p class="field-tip">从有答案的图里随机抽取，打乱顺序。</p>
-      </div>
-      <div class="field">
-        <label>出题方式</label>
-        <label class="switch">
-          <input type="checkbox" id="set-sim" checked>
-          <span class="track"><span class="knob"></span></span>
-          <span class="lbl">按相似度出题</span>
-        </label>
-        <p class="field-hint">开启时，干扰项从和当前图最相似的 10 张里挑；关掉则全库随机。</p>
-      </div>
 
-      <div class="field">
-        <label for="set-limit">单图限时</label>
-        <div class="field-row">
-          <input type="range" id="set-limit" min="3" max="30" step="1">
-          <output id="set-limit-out">15 秒</output>
+    <div class="drawer-body">
+
+      <section class="set-section">
+        <header class="set-section-head">
+          <h4>考试</h4>
+        </header>
+        <div class="set-card">
+
+          <div class="set-row">
+            <div class="set-row-head" data-tip="从已标注答案的图里随机抽取，每次顺序不同。">
+              <label class="set-label" for="set-count">每次抽题数量</label>
+              <output class="set-val" id="set-count-out" for="set-count">12</output>
+            </div>
+            <input type="range" id="set-count" min="4" max="60" step="1">
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-head" data-tip="倒计时结束自动跳到下一张，按未作答计算。">
+              <label class="set-label" for="set-limit">单图限时</label>
+              <output class="set-val" id="set-limit-out" for="set-limit">15 秒</output>
+            </div>
+            <input type="range" id="set-limit" min="3" max="30" step="1">
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-head" data-tip="错这么多张以内仍判通过；填 0 就是必须全对。">
+              <label class="set-label" for="set-allow">允许答错</label>
+              <output class="set-val" id="set-allow-out" for="set-allow">1 张</output>
+            </div>
+            <input type="range" id="set-allow" min="0" max="10" step="1">
+          </div>
+
+          <div class="set-row is-inline">
+            <div class="set-row-head" data-tip="开启时干扰项从和当前图最相似的 10 张里挑，更难辨；关闭则全库随机。">
+              <label class="set-label" for="set-sim">按相似度出题</label>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="set-sim" checked>
+              <span class="track"><span class="knob"></span></span>
+            </label>
+          </div>
+
         </div>
-        <p class="field-tip">时间到自动进入下一张，按未作答计。</p>
-      </div>
-      <div class="field">
-        <label for="set-allow">允许答错</label>
-        <div class="field-row">
-          <input type="range" id="set-allow" min="0" max="10" step="1">
-          <output id="set-allow-out">1 张</output>
+      </section>
+
+      <section class="set-section">
+        <header class="set-section-head" data-tip="只复制该目录下的图片（不含子目录），按文件名排序编号 001、002…；导入后到学习页逐张标注答案，标注过才会进考试。">
+          <h4>图版图片</h4>
+        </header>
+        <div class="set-card">
+
+          <div class="set-card-pad">
+            <div class="path-row">
+              <input type="text" id="plates-dir" class="path-input" placeholder="目录路径…">
+              <button class="btn ghost" id="btn-plates-dir" type="button">浏览</button>
+            </div>
+            <button class="btn block" id="btn-import-plates" type="button">导入这个目录</button>
+          </div>
+
+          <div class="plates-state">
+            <div class="plates-state-head">
+              <span id="plates-status"></span>
+              <button class="link-danger" id="btn-clear-plates" type="button">清空</button>
+            </div>
+            <div class="plates-path" id="plates-path" hidden></div>
+          </div>
+
         </div>
-      </div>
-      <div class="field">
-        <label>数据</label>
-        <button class="btn ghost block" id="btn-export">备份到文件</button>
-        <p class="field-hint">布局和答案存在 <code>data/layout.json</code>，换浏览器也不会丢。这个按钮只是额外下载一份备份。</p>
-      </div>
-      <div class="field">
-        <label for="plates-dir">图版图片</label>
-        <div class="path-row">
-          <input type="text" id="plates-dir" class="path-input" placeholder="粘贴目录路径，或点右侧浏览…">
-          <button class="btn ghost" id="btn-plates-dir" type="button">浏览…</button>
+      </section>
+
+      <section class="set-section">
+        <header class="set-section-head">
+          <h4>数据</h4>
+        </header>
+        <div class="set-card">
+
+          <button class="list-row" id="btn-export" type="button">
+            <span class="list-row-text">
+              <span class="list-row-title">备份到文件</span>
+              <span class="list-row-desc">下载一份 layout.json</span>
+            </span>
+            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/>
+            </svg>
+          </button>
+
+          <button class="list-row" id="btn-clear-layout" type="button">
+            <span class="list-row-text">
+              <span class="list-row-title">重置学习页排列</span>
+              <span class="list-row-desc">卡片回到按图号排序</span>
+            </span>
+            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 9a8 8 0 1 1 1.6 7.2"/>
+              <path d="M4 4.5V9h4.5"/>
+            </svg>
+          </button>
+
         </div>
-        <button class="btn ghost block" id="btn-import-plates" type="button">导入这个目录</button>
-        <p class="field-hint" id="plates-status"></p>
-        <button class="btn ghost block" id="btn-clear-plates" type="button">清空已导入图片</button>
-        <p class="field-hint">只复制该目录下的图片（不进子目录），按文件名排序编号 001、002 …；导入后到学习页点答案条逐张标注答案。</p>
-      </div>
-      <div class="field">
-        <button class="btn ghost block" id="btn-clear-layout">重置学习页排列</button>
-      </div>
+      </section>
+
       <p class="drawer-foot">设置与布局保存在本机浏览器中。</p>
     </div>
   </aside>

@@ -91,6 +91,14 @@
     $('set-count-out').textContent = settingInputs.count.value;
     $('set-limit-out').textContent = settingInputs.limit.value + ' 秒';
     $('set-allow-out').textContent = settingInputs.allow.value + ' 张';
+
+    ['count', 'limit', 'allow'].forEach(function (k) {
+      var el = settingInputs[k];
+      var min = Number(el.min) || 0;
+      var max = Number(el.max) || 100;
+      var pct = ((Number(el.value) - min) / (max - min)) * 100;
+      el.style.setProperty('--fill', pct.toFixed(2) + '%');
+    });
   }
 
   function readSettings() {
@@ -109,16 +117,33 @@
     if (!box) return;
     box.textContent = text;
     box.classList.toggle('is-error', !!isErr);
+
+    var pathEl = $('plates-path');
+    if (pathEl) pathEl.hidden = true;
   }
 
   function paintPlateStatus() {
+    var box = $('plates-status');
+    if (!box) return;
+
+    var clearBtn = $('btn-clear-plates');
+    var pathEl = $('plates-path');
+    var src = VH.store.platesSourceDir();
+
     if (VH.store.customPlates()) {
-      var src = VH.store.platesSourceDir();
-      setPlateStatus('已导入 ' + VH.store.platesCount() + ' 张'
-        + (src ? '，来源目录：' + src : '')
-        + '。图片在 temp/plates/，答案需要自己标注。');
+      box.textContent = '已导入 ' + VH.store.platesCount() + ' 张';
+      box.classList.remove('is-error');
+      if (pathEl) {
+        pathEl.textContent = src || '';
+        pathEl.title = src || '';
+        pathEl.hidden = !src;
+      }
+      if (clearBtn) clearBtn.hidden = false;
     } else {
-      setPlateStatus('还没导入。指定一个放图片的目录，会把它下面的图片复制到 temp/plates/。');
+      box.textContent = '尚未导入图版';
+      box.classList.remove('is-error');
+      if (pathEl) pathEl.hidden = true;
+      if (clearBtn) clearBtn.hidden = true;
     }
   }
 
